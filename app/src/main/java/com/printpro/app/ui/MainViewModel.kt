@@ -279,6 +279,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         }
                         IppClient.printJob(p, file, name, opts)
                     }
+                    Unit
                 }
                 if (manualStarted) _ui.update { it.copy(busy = null, manualDuplexPrompt = true) }
                 else _ui.update { it.copy(busy = null, message = "Travail envoyé à ${p.name}.") }

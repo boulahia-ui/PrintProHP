@@ -109,6 +109,7 @@ class DocumentConverter(private val context: Context) {
                         d.setAllSecurityToBeRemoved(true)
                         decrypted = File(workDir, "dec_$stamp.pdf").also { d.save(it) }
                     }
+                    Unit
                 }
             } catch (e: InvalidPasswordException) {
                 throw IOException("Ce PDF est protégé par un mot de passe.")
