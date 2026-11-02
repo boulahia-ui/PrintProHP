@@ -19,6 +19,7 @@ Impression Wi-Fi directe depuis Android vers les imprimantes HP (et autres impri
 | 🎨 Couleur | Couleur / noir et blanc (selon l'imprimante) |
 | 🖼️ Qualité | Brouillon / normale / haute (selon ce que l'imprimante annonce) |
 | 👁️ Aperçu | Rendu réel de chaque face avant impression |
+| 💾 Enregistrer en PDF | Sortie « Enregistrer en PDF » : la mise en page (copies comprises) est enregistrée dans un fichier choisi par l'utilisateur |
 | 📃 Pages | Plages du type `1-5, 8, 10-12`, `10-` (jusqu'à la fin), `5-1` (ordre inverse) |
 
 L'application prépare elle-même un PDF mis en page (vectoriel, le texte reste net) puis l'envoie à l'imprimante en IPP. Le bouton **Via Android** envoie ce même PDF au service d'impression du téléphone (HP Print Service Plugin, Mopria) en solution de secours.

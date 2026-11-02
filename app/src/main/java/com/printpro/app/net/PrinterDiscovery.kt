@@ -49,7 +49,6 @@ class PrinterDiscovery(context: Context) {
                 resolving = true
                 n
             }
-            @Suppress("DEPRECATION")
             nsd.resolveService(next, object : NsdManager.ResolveListener {
                 override fun onResolveFailed(info: NsdServiceInfo, errorCode: Int) {
                     synchronized(sync) { resolving = false }
@@ -94,13 +93,14 @@ class PrinterDiscovery(context: Context) {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun toPrinter(info: NsdServiceInfo): DiscoveredPrinter? {
-        val addr: InetAddress = if (Build.VERSION.SDK_INT >= 34) {
+        val addr: InetAddress? = if (Build.VERSION.SDK_INT >= 34) {
             info.hostAddresses.firstOrNull { it is Inet4Address } ?: info.hostAddresses.firstOrNull()
         } else {
-            @Suppress("DEPRECATION") info.host
-        } ?: return null
-        val host = addr.hostAddress ?: return null
+            info.host
+        }
+        val host = addr?.hostAddress ?: return null
         val txt = info.attributes.entries.associate { (k, v) -> k.lowercase() to (v?.toString(Charsets.UTF_8) ?: "") }
         val path = txt["rp"]?.trim('/') ?: "ipp/print"
         val model = txt["ty"] ?: txt["product"]?.trim('(', ')') ?: ""

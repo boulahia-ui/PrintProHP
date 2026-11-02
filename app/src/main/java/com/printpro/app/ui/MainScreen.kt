@@ -63,6 +63,9 @@ fun MainScreen(vm: MainViewModel, onSystemPrint: () -> Unit) {
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) vm.loadFiles(uris)
     }
+    val pdfSaver = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
+        if (uri != null) vm.savePdf(uri)
+    }
 
     Scaffold(
         topBar = {
@@ -75,7 +78,13 @@ fun MainScreen(vm: MainViewModel, onSystemPrint: () -> Unit) {
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
-        bottomBar = { PrintBar(st, onPrint = vm::print, onSystemPrint = onSystemPrint) },
+        bottomBar = {
+            PrintBar(
+                st,
+                onPrint = { if (st.pdfOutput) pdfSaver.launch(vm.suggestedPdfName()) else vm.print() },
+                onSystemPrint = onSystemPrint,
+            )
+        },
     ) { padding ->
         Column(
             Modifier
@@ -109,8 +118,9 @@ fun MainScreen(vm: MainViewModel, onSystemPrint: () -> Unit) {
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
+                PdfOutputRow(selected = st.pdfOutput, onClick = vm::selectPdfOutput)
                 st.printers.forEach { p ->
-                    PrinterRow(p, selected = st.selected?.id == p.id) { vm.selectPrinter(p) }
+                    PrinterRow(p, selected = !st.pdfOutput && st.selected?.id == p.id) { vm.selectPrinter(p) }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = vm::refreshPrinters) {
@@ -121,6 +131,11 @@ fun MainScreen(vm: MainViewModel, onSystemPrint: () -> Unit) {
                     }
                 }
                 when {
+                    st.pdfOutput -> Text(
+                        "La mise en page est enregistrée dans un fichier PDF (pages par feuille, marges, échelle, copies). " +
+                            "La couleur et la qualité s'appliqueront lors de l'impression du fichier.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                     st.capsLoading -> Text("Interrogation de l'imprimante…", style = MaterialTheme.typography.bodySmall)
                     caps != null -> CapsSummary(caps)
                 }
@@ -299,10 +314,16 @@ private fun PrintBar(st: UiState, onPrint: () -> Unit, onSystemPrint: () -> Unit
             OutlinedButton(onClick = onSystemPrint, enabled = st.faceCount > 0) { Text("Via Android") }
             Button(
                 onClick = onPrint,
-                enabled = st.faceCount > 0 && st.selected != null && st.busy == null,
+                enabled = st.faceCount > 0 && (st.selected != null || st.pdfOutput) && st.busy == null,
                 modifier = Modifier.weight(1f),
             ) {
-                Text(if (st.faceCount > 0) "Imprimer · $paper feuille(s)" else "Imprimer")
+                Text(
+                    when {
+                        st.pdfOutput -> "Enregistrer le PDF"
+                        st.faceCount > 0 -> "Imprimer · $paper feuille(s)"
+                        else -> "Imprimer"
+                    }
+                )
             }
         }
     }
@@ -335,6 +356,17 @@ private fun SheetPreview(renderer: PreviewRenderer, index: Int, total: Int, vers
         }
         Spacer(Modifier.height(4.dp))
         Text("Face ${index + 1} / $total", style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+@Composable
+private fun PdfOutputRow(selected: Boolean, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        RadioButton(selected = selected, onClick = onClick)
+        Column(Modifier.weight(1f)) {
+            Text("Enregistrer en PDF", fontWeight = FontWeight.SemiBold)
+            Text("Crée un fichier avec la mise en page, sans imprimante", style = MaterialTheme.typography.bodySmall)
+        }
     }
 }
 

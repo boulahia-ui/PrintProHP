@@ -53,7 +53,7 @@ object SystemPrint {
     private class FileAdapter(private val file: File, private val name: String) : PrintDocumentAdapter() {
         override fun onLayout(
             oldAttributes: PrintAttributes?, newAttributes: PrintAttributes,
-            cancellationSignal: CancellationSignal?, callback: LayoutResultCallback, extras: Bundle?,
+            cancellationSignal: CancellationSignal?, callback: PrintDocumentAdapter.LayoutResultCallback, extras: Bundle?,
         ) {
             if (cancellationSignal?.isCanceled == true) { callback.onLayoutCancelled(); return }
             val info = PrintDocumentInfo.Builder(name.substringBeforeLast('.').ifBlank { "document" } + ".pdf")
@@ -64,7 +64,7 @@ object SystemPrint {
 
         override fun onWrite(
             pages: Array<out PageRange>, destination: ParcelFileDescriptor,
-            cancellationSignal: CancellationSignal?, callback: WriteResultCallback,
+            cancellationSignal: CancellationSignal?, callback: PrintDocumentAdapter.WriteResultCallback,
         ) {
             try {
                 FileInputStream(file).use { i -> FileOutputStream(destination.fileDescriptor).use { o -> i.copyTo(o) } }

@@ -31,7 +31,8 @@ class MainActivity : ComponentActivity() {
 
     /** Fichiers reçus via « Partager » ou « Ouvrir avec ». */
     private fun handleIntent(intent: Intent?) {
-        val uris: List<Uri> = when (intent?.action) {
+        if (intent == null) return
+        val uris: List<Uri> = when (intent.action) {
             Intent.ACTION_SEND -> listOfNotNull(IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java))
             Intent.ACTION_SEND_MULTIPLE -> IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri::class.java).orEmpty()
             Intent.ACTION_VIEW -> listOfNotNull(intent.data)

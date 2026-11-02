@@ -51,6 +51,7 @@ data class UiState(
     val busy: String? = null,
     val message: String? = null,
     val manualDuplexPrompt: Boolean = false,
+    val pdfOutput: Boolean = false,
 ) {
     val printers: List<DiscoveredPrinter>
         get() = (manualPrinters + discovered.filter { !hpOnly || it.isHp }).distinctBy { it.id }
@@ -92,7 +93,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 discovery.discover().collect { list ->
                     _ui.update { it.copy(discovered = list) }
-                    if (_ui.value.selected == null) list.firstOrNull { it.isHp }?.let { selectPrinter(it) }
+                    if (_ui.value.selected == null && !_ui.value.pdfOutput) list.firstOrNull { it.isHp }?.let { selectPrinter(it) }
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -113,7 +114,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun selectPrinter(p: DiscoveredPrinter) {
-        _ui.update { it.copy(selected = p, caps = null, capsLoading = true) }
+        _ui.update { it.copy(selected = p, caps = null, capsLoading = true, pdfOutput = false) }
         viewModelScope.launch {
             try {
                 val caps = withContext(Dispatchers.IO) { IppClient.getPrinterAttributes(p) }
@@ -192,6 +193,41 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 _ui.update { it.copy(layoutError = e.message) }
             } catch (e: Throwable) {
                 _ui.update { it.copy(message = "Mise en page impossible : ${e.message}") }
+            }
+        }
+    }
+
+    // ---------------- Enregistrement en PDF ----------------
+
+    fun selectPdfOutput() = _ui.update { it.copy(pdfOutput = true, selected = null, caps = null, capsLoading = false) }
+
+    fun suggestedPdfName(): String {
+        val base = _ui.value.sourceName?.substringBeforeLast('.')?.takeIf { it.isNotBlank() } ?: "document"
+        return "${base}_mise_en_page.pdf"
+    }
+
+    /** Écrit la mise en page (toutes les copies, assemblées) dans le fichier choisi par l'utilisateur. */
+    fun savePdf(target: Uri) {
+        viewModelScope.launch {
+            rebuildJob?.join()
+            val imp = imposed ?: return@launch msg("Aucun document à enregistrer.")
+            val s = _ui.value.settings
+            val faces = _ui.value.faceCount
+            _ui.update { it.copy(busy = "Enregistrement du PDF…") }
+            try {
+                withContext(Dispatchers.IO) {
+                    val src = if (s.copies <= 1) imp else File(workDir, "export_copies.pdf").also {
+                        JobBuilder.build(imp, JobPlanner.collated(faces, s.copies, s.duplex != DuplexMode.SIMPLEX), it)
+                    }
+                    val out = getApplication<Application>().contentResolver.openOutputStream(target)
+                        ?: throw java.io.IOException("Emplacement inaccessible")
+                    out.use { o -> src.inputStream().use { it.copyTo(o) } }
+                }
+                _ui.update { it.copy(busy = null, message = "PDF enregistré.") }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _ui.update { it.copy(busy = null, message = "Enregistrement impossible : ${e.message}") }
             }
         }
     }
